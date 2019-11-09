@@ -9,6 +9,9 @@ var usersRouter = require('./routes/users');
 
 var app = express();
 
+var cors = require('cors')
+app.use(cors());
+
 var http = require('http').createServer(app);
 var io = require('socket.io').listen(http);
 
@@ -28,7 +31,7 @@ app.get('/', function(req, res){
   res.sendFile(__dirname + '/index.html');
 });
 
-http.listen(3030, function(){
+http.listen(process.env.PORT || 3030, function(){
   console.log('listening on *:3030');
 });
 
