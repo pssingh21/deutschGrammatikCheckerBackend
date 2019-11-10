@@ -29,19 +29,22 @@ var proofreadApi = WEBSPELLCHECKER.initWebApi({
 io.sockets.on('connect', (socket) => {
   console.log('A user is connected');
 
-  socket.emit('check', 'hello');
-
   socket.on('new-message', (message) => {
-    client.connect(err => {
-      const collection = client.db("hackathon").collection("hackathon");
-      collection.insertOne({"val": message});
-    });
+    
 
     proofreadApi.spellCheck({
       text: message,
       success: function(data) {
-        console.log(data);
+        console.log('data to save',data);
         socket.emit('wrong-word', data);
+
+        if(data.length != 0){
+          client.connect(err => {
+            const collection = client.db("hackathon").collection("wordFailes");
+            collection.insertOne({"wordEntered": message, "error": data});
+          });
+        }
+
       },
       error: function() {}
   });
@@ -50,8 +53,14 @@ io.sockets.on('connect', (socket) => {
       text: message,
       success: function(data) {
           console.log(data); //[ { sentence: 'mispeled text', matches: [ [Object] ] } ]
-          console.log(data[0].matches);
+          console.log('data to save2',data[0].matches);
           socket.emit('new-message', data[0]);
+          if(data[0].matches.length != 0){
+            client.connect(err => {
+              const collection = client.db("hackathon").collection("sentenceFailes");
+              collection.insertOne({"sentenceEntered": message, "error": data});
+            });
+          }
       },
       error: function() {}
     });
