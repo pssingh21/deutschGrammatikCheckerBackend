@@ -15,15 +15,55 @@ app.use(cors());
 var http = require('http').createServer(app);
 var io = require('socket.io').listen(http);
 
-io.sockets.on('connection', (socket) => {
+const MongoClient = require('mongodb').MongoClient;
+const uri = "mongodb+srv://admin:admin@cluster0-sqenn.gcp.mongodb.net/test?retryWrites=true&w=majority";
+const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+
+var WEBSPELLCHECKER = require('webspellchecker-api');
+
+var proofreadApi = WEBSPELLCHECKER.initWebApi({
+  lang: 'de_DE', // You can get a list of supported languages with their shortcodes here: http://dev.webspellchecker.net/api/webapi/WEBSPELLCHECKER.html
+  serviceId: '1:HB3jD2-r2MG54-sah8o1-AhS643-VdYvv3-e4jFI-VbytT1-RlS9d3-vepBb4-rBfqG-ZU68e2-YJ' //The serviceId is a required parameter. In order to start using WebSpellChecker API, you have to obtain a service key.
+});
+
+io.sockets.on('connect', (socket) => {
   console.log('A user is connected');
 
+  socket.emit('check', 'hello');
+
   socket.on('new-message', (message) => {
-    io.sockets.emit('new-message',message);
+    client.connect(err => {
+      const collection = client.db("hackathon").collection("hackathon");
+      collection.insertOne({"val": message});
+    });
+
+    proofreadApi.spellCheck({
+      text: message,
+      success: function(data) {
+        console.log(data);
+        socket.emit('wrong-word', data);
+      },
+      error: function() {}
+  });
+
+    proofreadApi.grammarCheck({
+      text: message,
+      success: function(data) {
+          console.log(data); //[ { sentence: 'mispeled text', matches: [ [Object] ] } ]
+          console.log(data[0].matches);
+          socket.emit('new-message', data[0]);
+      },
+      error: function() {}
+    });
+
+        
+
+  
   });
 
   socket.on('disconnect', function(){
     console.log("User disconnected");
+    client.close();
   });
 });
 
